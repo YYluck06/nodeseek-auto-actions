@@ -16,13 +16,17 @@ name: 账号2 签到
 # ─────────────────────────────────────────────────────────────────────────────
 
 on:
+  # 定时默认关着：想让它每天自动跑，把下面两行的注释去掉即可
   # schedule:
-  #   # 填好 NS_COOKIE_2 之后，把下面两行的注释去掉（错开 7 分钟，别和账号1 撞一起）
   #   - cron: "30 16 * * *"
   workflow_dispatch:
     inputs:
       force:
         description: "忽略本地签到记录，强制再查一次（不会重复签到）"
+        type: boolean
+        default: false
+      login:
+        description: "① 用账号密码登录一次并抓最新 Cookie（验证码发到 Telegram，需 NS_USER_2/NS_PASS_2）"
         type: boolean
         default: false
 
@@ -38,7 +42,7 @@ jobs:
   signin:
     name: 账号2
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
 
     env:
       TZ: Asia/Shanghai
@@ -55,6 +59,14 @@ jobs:
       NS_STATE_KEY: ${{ secrets.NS_STATE_KEY }}
       NS_COOKIE_2: ${{ secrets.NS_COOKIE_2 }}
       NS_PROXY_2: ${{ secrets.NS_PROXY_2 }}
+
+      # 勾了 login 才用到：账号密码登录一次，Cookie 由脚本自己抓下来存进私有库
+      NS_USER_2: ${{ secrets.NS_USER_2 }}
+      NS_PASS_2: ${{ secrets.NS_PASS_2 }}
+      # 有它就把最新 Cookie 直接写回本库 Secret NS_COOKIE_2（可选，需细粒度 PAT）
+      NS_GH_TOKEN: ${{ secrets.NS_GH_TOKEN }}
+      NS_GH_REPO: ${{ github.repository }}
+      NS_GH_SECRET_NAME: "NS_COOKIE_2"
 
       TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
       TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
@@ -101,7 +113,36 @@ jobs:
         working-directory: code
         run: python tools/doctor.py --account 2 || true
 
-      - name: 执行签到
+      - name: 登录一次并抓取 Cookie（勾了 login 才跑）
+        if: ${{ inputs.login }}
+        working-directory: code
+        run: |
+          set -u
+          if [ -z "${NS_USER_2:-}" ] || [ -z "${NS_PASS_2:-}" ]; then
+            echo "::error::勾了 login 但没配 NS_USER_2 / NS_PASS_2"; exit 1
+          fi
+          if [ -z "${TG_BOT_TOKEN:-}" ] || [ -z "${TG_CHAT_ID:-}" ]; then
+            echo "::error::勾了 login 但没配 TG_BOT_TOKEN / TG_CHAT_ID，验证码没地方收"; exit 1
+          fi
+          python - <<'PY'
+          import random, time
+          d = random.randint(3, 90)
+          print(f"· 启动抖动 {d}s（真人不会在整点动手）", flush=True)
+          time.sleep(d)
+          PY
+          # headful Chrome + 虚拟屏：人机挑战只有真实浏览器才稳过
+          xvfb-run -a --server-args="-screen 0 1280x900x24" \
+            python tools/capture_cookie.py \
+              --account 2 \
+              --username "$NS_USER_2" \
+              --password "$NS_PASS_2" \
+              --code-via tg \
+              --gh-repo "$NS_GH_REPO" \
+              --gh-secret "$NS_GH_SECRET_NAME" \
+              --timeout 1200
+
+      - name: 执行签到（没勾 login 时跑）
+        if: ${{ !inputs.login }}
         # headful 的真实 Chrome 最容易过 Cloudflare 人机挑战，用 xvfb 给个虚拟屏
         working-directory: code
         run: xvfb-run -a --server-args="-screen 0 1280x900x24" python signin.py --account 2
