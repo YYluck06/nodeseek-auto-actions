@@ -71,3 +71,41 @@ account-3.yml   → 账号3（同上）
 ## 致谢
 
 思路参考：`wugeng20/NodeSeekSignin`、`HoseaDev/NodeSeek-Daily`、`dragonff/NodeSeek`。
+
+## 五个账号一览（照这个表建，留空也行）
+
+**Settings → Secrets and variables → Actions → Variables**（普通变量，明文可读）
+
+| 变量 | 账号1 | 账号2 | 账号3 | 账号4 | 账号5 |
+|---|---|---|---|---|---|
+| `NS_RANDOM_N` | `true` | `true` | `true` | `true` | `true` |
+
+`true` = 随机鸡腿，`false` = 固定 5 个。不建就等于随机。也可以只建一个全局 `NS_RANDOM` 四个号一起兜底。
+
+**Settings → Secrets**（只写不可读）
+
+| Secret | 用途 | 要不要改 |
+|---|---|---|
+| `NS_STATE_KEY` | 状态文件加密口令，**全部账号共用同一个** | 填一次，之后永不修改（改了旧状态文件全部作废，等于所有号要重新抓 Cookie） |
+| `NS_COOKIE_1` … `NS_COOKIE_5` | 各账号 Cookie 种子，可留空 | 留空也行，login 模式抓到后自动回写 |
+| `NS_USER_1` … `NS_USER_5` | 各账号登录名 | Cookie 失效时自动续期用 |
+| `NS_PASS_1` … `NS_PASS_5` | 各账号密码 | 同上 |
+| `NS_PROXY_1` … `NS_PROXY_5` | 各账号专属出口，可留空 | **留空最稳**，交给 WARP 出口 |
+| `TG_BOT_TOKEN` | Telegram bot token，全部账号共用同一个 | 填一次 |
+| `TG_CHAT_ID` | 接收验证码/通知的 chat id，共用一个 | 填一次 |
+
+## Cookie 每次存在哪里
+
+每跑一次，最新 Cookie 会落到**三个地方**，按重要性排序：
+
+1. **`state/account-N.state`（主存储，加密）**
+   - 私库 `YYluck06/nodeseek-auto` 里的 `state/account-1.state` … `account-5.state`。
+   - CI 里真实路径是 `$GITHUB_WORKSPACE/code/state/account-N.state`（`code` 就是 clone 下来的私库）。
+   - 跑完由工作流最后一步「把最新 Cookie 存回私库」`git commit` + `git push` 回私库 main，commit message 长这样：`chore(state): 账号1 更新 Cookie (2026-11-07)`。
+   - 内容是 AES 流加密后的密文（`NSSTATE1` 头），**没有 `NS_STATE_KEY` 打不开**，所以就算仓库被别人看到也拿不到 Cookie 值。
+   - 本机自己跑 `python tools/capture_cookie.py` 时，默认也写到同一个 `state/account-N.state`。
+2. **`NS_COOKIE_N` 这个 Secret（可选）**
+   - 只有当 `NS_GH_TOKEN` 给了细粒度 PAT（`Secrets: Read and write`）时，才会顺手把最新 Cookie `PUT` 成同名 Secret，省得你手抄。
+   - 没配 `NS_GH_TOKEN` 就跳过，不报错。
+3. **`state/last-run-N.json` / `state/last-login-N.json`（明文诊断，不含 Cookie 值）**
+   - 只记状态、出口 IP、页面标题、失败原因这类东西，用来排查"为什么没签上"。
