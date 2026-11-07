@@ -63,7 +63,8 @@ jobs:
       NS_DELAY_MIN: "3"
       NS_DELAY_MAX: "9"
       # 签到模式：true=随机鸡腿，false=固定 5 个（也可以在仓库 Variables 加 NS_RANDOM 长期指定）
-      NS_RANDOM: ${{ inputs.random == 'random' && 'true' || inputs.random == 'fixed' && 'false' || vars.NS_RANDOM || 'true' }}
+      # 签到模式：true=随机鸡腿，false=固定 5 个；这个账号的 Variables 里建 NS_RANDOM_3 最直观
+      NS_RANDOM: ${{ inputs.random == 'random' && 'true' || inputs.random == 'fixed' && 'false' || vars.NS_RANDOM_3 || vars.NS_RANDOM || 'true' }}
       # 人机验证最多等多久（机房 IP 有时要等更久）
       NS_CF_WAIT: "180"
       # 登录时人机挑战最多等多久（云端没有真人可点，等不到就停）
