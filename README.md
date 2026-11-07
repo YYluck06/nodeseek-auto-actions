@@ -33,18 +33,23 @@ account-3.yml   → 账号3（同上）
 | `NS_PROXY_1` | 建议 | 账号1 固定代理，如 `http://user:pass@1.2.3.4:8080` |
 | `NS_COOKIE_2` / `NS_PROXY_2` | 多账号 | 账号2 |
 | `NS_COOKIE_3` / `NS_PROXY_3` | 多账号 | 账号3 |
-| `NS_STATE_KEY` | 建议 | 状态文件加密口令（设了别改） |
-| `TG_BOT_TOKEN` / `TG_CHAT_ID` | 可选 | Telegram 推送 |
+| `NS_STATE_KEY` | ✅ | 状态文件加密口令（设了别改；改了旧 Cookie 状态就解不开） |
+| `NS_USER_1` / `NS_PASS_1` | 建议 | 账号1 用户名/密码：Cookie 失效时脚本会自己登录续期（验证码发到 Telegram） |
+| `TG_BOT_TOKEN` / `TG_CHAT_ID` | 建议 | Telegram Bot：推送通知 + 接收登录验证码 |
+| `NS_COOKIE_2` / `NS_PROXY_2` / `NS_USER_2` / `NS_PASS_2` | 多账号 | 账号2 |
+| `NS_COOKIE_3` / `NS_PROXY_3` / `NS_USER_3` / `NS_PASS_3` | 多账号 | 账号3 |
 | `DD_BOT_TOKEN` / `DD_BOT_SECRET` | 可选 | 钉钉（加签） |
 | `BARK_URL` / `SERVERCHAN_KEY` / `WEBHOOK_URL` | 可选 | 其他推送 |
 
-> Cookie 属于账号凭据，只放 Secret，**不要**提交到任何文件里。
+> Cookie 属于账号凭据，只放 Secret，**不要**提交到任何文件里。Secret 写进去之后谁都读不出来，只在运行时交给脚本。
 
 ## 手动触发
 
 `Actions → 账号1 签到 → Run workflow`
 
 - `force`：忽略本地"今天已签"的记录，再问一次站点（站点自己会说"已经签过"，不会重复签）
+- `login`：用账号密码登录一次并抓最新 Cookie。验证码会发到你的 Telegram，**在 TG 里回那 6 位数字**即可；
+  抓到的 Cookie 会自动存进私库，之后就一直用 Cookie 签到
 
 ## 加一个账号
 
