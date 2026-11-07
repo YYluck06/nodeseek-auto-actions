@@ -54,6 +54,8 @@ jobs:
       NS_STARTUP_JITTER: "90"
       NS_DELAY_MIN: "3"
       NS_DELAY_MAX: "9"
+      # 人机验证最多等多久（机房 IP 有时要等更久）
+      NS_CF_WAIT: "180"
       NS_FORCE: ${{ inputs.force && '1' || '' }}
 
       NS_STATE_KEY: ${{ secrets.NS_STATE_KEY }}
@@ -107,6 +109,13 @@ jobs:
           python -m pip install -q --upgrade pip
           pip install -q -r code/requirements.txt
           python -c "import curl_cffi, selenium; print('依赖就绪')"
+
+      - name: 开启 WARP（让出口变成 Cloudflare 自己的 IP，人机验证好过得多）
+        continue-on-error: true
+        uses: fscarmen/warp-on-actions@v1.3
+        with:
+          stack: ipv4
+          mode: client
 
       - name: 体检（失败不阻塞签到）
         continue-on-error: true
