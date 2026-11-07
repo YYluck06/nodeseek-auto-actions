@@ -56,6 +56,8 @@ jobs:
       NS_DELAY_MAX: "9"
       # 人机验证最多等多久（机房 IP 有时要等更久）
       NS_CF_WAIT: "180"
+      # 登录时人机挑战最多等多久（云端没有真人可点，等不到就停）
+      NS_LOGIN_CF_WAIT: "180"
       NS_FORCE: ${{ inputs.force && '1' || '' }}
 
       NS_STATE_KEY: ${{ secrets.NS_STATE_KEY }}
@@ -148,13 +150,21 @@ jobs:
               --code-via tg \
               --gh-repo "$NS_GH_REPO" \
               --gh-secret "$NS_GH_SECRET_NAME" \
-              --timeout 1200
+              --timeout 900
 
       - name: 执行签到（没勾 login 时跑）
         if: ${{ !inputs.login }}
         # headful 的真实 Chrome 最容易过 Cloudflare 人机挑战，用 xvfb 给个虚拟屏
         working-directory: code
         run: xvfb-run -a --server-args="-screen 0 1280x900x24" python signin.py --account 2
+
+      - name: 打印登录现场（云端看不到浏览器，靠这个定位）
+        if: always()
+        run: |
+          f=$(ls -1 state/last-login-*.json 2>/dev/null | head -1 || true)
+          if [ -n "$f" ]; then echo "---- $f ----"; cat "$f"; else echo "没有 last-login 现场文件（可能没走到登录流程）"; fi
+          f2=$(ls -1 state/last-run-*.json 2>/dev/null | head -1 || true)
+          if [ -n "$f2" ]; then echo "---- $f2 ----"; cat "$f2"; fi
 
       - name: 把最新 Cookie 存回私库
         if: always()
